@@ -12,7 +12,8 @@ public:
 	class Iterator {
 	public:
 		Iterator();
-		Iterator(const std::string fileName, long offset);
+		Iterator(const std::string& filename, long offset);
+		Iterator(const Iterator& ob);
 		~Iterator();
 		// You may add additional constructors
 		bool isValid() const;
@@ -21,6 +22,7 @@ public:
 
 	private:
 		long m_offset;
+		std::string m_filename;
 		BinaryFile bf;
 		MultiMapTuple convert(char key[], char value[], char context[]) {
 			MultiMapTuple m;
@@ -44,12 +46,14 @@ private:
 	struct KeyValueContextTuple {
 		char key[128], value[128], context[128];
 		long next;
+		long m_offset;
 		///remember to initialize offset and key, value, context when inserting
 	};
 	struct KeyTuple {
 		char key[128];
 		long kvct_pos; //KeyValueContextTuple position
 		long next;
+		long m_offset;
 		///remember to initialize offsets key when inserting
 	};
 	struct DiskHeader {
