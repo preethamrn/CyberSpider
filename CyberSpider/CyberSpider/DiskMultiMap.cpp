@@ -1,4 +1,7 @@
 #include "DiskMultiMap.h"
+#include "BinaryFile.h"
+#include <cstring>
+#include <string>
 
 DiskMultiMap::Iterator::Iterator() {
 	m_offset = -1;
@@ -143,26 +146,56 @@ DiskMultiMap::Iterator DiskMultiMap::search(const std::string& key) {
 	}
 }
 
-int main()
-{
-	DiskMultiMap x;
-	x.createNew("myhashtable.dat", 100); // empty, with 100 buckets
-	x.insert("hmm.exe", "pfft.exe", "m52902");
-	x.insert("hmm.exe", "pfft.exe", "m52902");
-	x.insert("hmm.exe", "pfft.exe", "m10001");
-	x.insert("blah.exe", "bletch.exe", "m0003");
-	DiskMultiMap::Iterator it = x.search("hmm.exe");
-	if (it.isValid())
-	{
-		cout << "I found at least 1 item with a key of hmm.exe\n";
-		do
-		{
-			MultiMapTuple m = *it; // get the association
-			cout << "The key is: " << m.key << endl;
-			cout << "The value is: " << m.value << endl;
-			cout << "The context is: " << m.context << endl;
-			cout << endl;
-			++it; // advance iterator to the next matching item
-		} while (it.isValid());
+int DiskMultiMap::erase(const std::string& key, const std::string& value, const std::string& context) {
+	long offset = -1;
+	unsigned int pos = hash(key) % header.numBuckets;
+	bf.read(offset, sizeof(DiskHeader) + pos*sizeof(long));
+	KeyTuple kt, prev_kt; prev_kt.m_offset = -1;
+	while (offset != -1) {
+		bf.read(kt, offset);
+		if (!strcmp(kt.key, key.c_str())) break;
+		else prev_kt = kt;
+		offset = kt.next;
 	}
+	if (offset == -1) return 0;
+	KeyValueContextTuple prev, curr;
+	long kvct_offset = kt.kvct_pos;
+	int num_deleted = 0; //number of deleted items to be returned
+	//update kt associated with kvct so it keeps pointing to correct head of linked list
+	while (kvct_offset != -1 && bf.read(curr, kvct_offset) && !strcmp(curr.key, key.c_str()) && !strcmp(curr.value, value.c_str()) && !strcmp(curr.context, context.c_str())) {
+		kvct_offset = curr.next; kt.kvct_pos = kvct_offset;
+		bf.write(kt, kt.m_offset);
+		bf.write(header.kvct_last_erased, curr.m_offset);
+		header.kvct_last_erased = curr.m_offset;
+		num_deleted++;
+	}
+	if (kvct_offset == -1) {
+		//update kt_last_erased and erase this kt
+		if (prev_kt.m_offset != -1) {
+			prev_kt.next = kt.next;
+			bf.write(prev_kt, prev_kt.m_offset);
+		} else {
+			//since prev_kt hasn't been updated, we know kt is at the head of the bucked
+			bf.write(kt.next, sizeof(DiskHeader) + pos*sizeof(long)); //update the bucket pointer
+		}
+		bf.write(header.kt_last_erased, kt.m_offset);
+		header.kt_last_erased = kt.m_offset;
+	}
+	//update individual links of the linked list
+	while(kvct_offset != -1) {
+		bf.read(curr, kvct_offset);
+		//check whether curr needs to be deleted
+		if (!strcmp(curr.key, key.c_str()) && !strcmp(curr.value, value.c_str()) && !strcmp(curr.context, context.c_str())) {
+			prev.next = curr.next;
+			bf.write(prev, prev.m_offset);
+			bf.write(header.kvct_last_erased, curr.m_offset);
+			header.kvct_last_erased = curr.m_offset;
+			num_deleted++;
+		} else {
+			prev = curr;
+		}
+		kvct_offset = curr.next;
+	}
+	bf.write(header, 0);
+	return num_deleted;
 }
