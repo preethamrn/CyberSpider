@@ -5,8 +5,7 @@
 #include <string>
 #include <vector>
 
-class IntelWeb
-{
+class IntelWeb {
 public:
 	IntelWeb();
 	~IntelWeb();

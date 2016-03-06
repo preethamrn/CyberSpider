@@ -3,14 +3,9 @@
 
 #include <string>
 
-struct InteractionTuple
-{
-	InteractionTuple()
-	{}
-
-	InteractionTuple(const std::string& f, const std::string& t, const std::string& c)
-		: from(f), to(t), context(c)
-	{}
+struct InteractionTuple {
+	InteractionTuple() {}
+	InteractionTuple(const std::string& f, const std::string& t, const std::string& c) : from(f), to(t), context(c) {}
 
 	std::string from;
 	std::string to;
