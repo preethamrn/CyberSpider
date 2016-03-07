@@ -1,0 +1,16 @@
+m26500 http://delta.com/eay/ hq.exe
+m491 http://nicovideo.jp/cvsc/ fd.exe
+38
+m491 fd.exe bwk.exe
+m491 fd.exe dux.exe
+m491 dux.exe fozv.exe
+m7711 http://taboola.com/ggxr/nrvy/t/ kj.exe
+m9040 http://softonic.com/q/ y.exe
+m15006 http://feedly.com/z/ ik.exe
+m15006 ik.exe kka.exe
+m15006 kka.exe s.exe
+m15006 kka.exe http://jrj.com.cn/ycx/xt/
+m15006 s.exe gyp.exe
+m19072 http://free.fr/bc/eju/pvab/y/ dpo.exe
+m3430 http://office365.com/bnpl/ e.exe
+m3430 e.exe vi.exe

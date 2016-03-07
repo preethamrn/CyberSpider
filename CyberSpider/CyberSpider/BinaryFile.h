@@ -32,14 +32,14 @@ public:
 	bool openExisting(const std::string& filename) {
 		if (m_stream.is_open())
 			return false;
-		m_stream.open(filename, ios::in | ios::out | ios::binary);
+		m_stream.open(filename, std::ios::in | std::ios::out | std::ios::binary);
 		return m_stream.good();
 	}
 
 	bool createNew(const std::string& filename) {
 		if (m_stream.is_open())
 			return false;
-		m_stream.open(filename, ios::in | ios::out | ios::binary | ios::trunc);
+		m_stream.open(filename, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
 		return m_stream.good();
 	}
 
@@ -62,7 +62,7 @@ public:
 	}
 
 	bool write(const char* data, size_t length, Offset toOffset) {
-		return m_stream.seekp(toOffset, ios::beg) &&
+		return m_stream.seekp(toOffset, std::ios::beg) &&
 			m_stream.write(data, length);
 	}
 
@@ -80,7 +80,7 @@ public:
 	}
 
 	bool read(char* data, size_t length, Offset fromOffset) {
-		return m_stream.seekg(fromOffset, ios::beg) &&
+		return m_stream.seekg(fromOffset, std::ios::beg) &&
 			m_stream.read(data, length);
 	}
 
@@ -102,9 +102,9 @@ public:
 		if (!m_stream.is_open())
 			return -1;
 		Offset currPos = m_stream.tellg();
-		m_stream.seekg(0, ios::end);
+		m_stream.seekg(0, std::ios::end);
 		Offset length = m_stream.tellg();
-		m_stream.seekg(currPos, ios::beg);
+		m_stream.seekg(currPos, std::ios::beg);
 		return length;
 	}
 
@@ -113,7 +113,7 @@ public:
 	}
 
 private:
-	fstream m_stream;
+	std::fstream m_stream;
 
 	// fstreams are not copyable, so BinaryFiles won't be copyable.
 };

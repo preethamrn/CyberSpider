@@ -3,6 +3,7 @@
 
 #include "InteractionTuple.h"
 #include "DiskMultiMap.h"
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -22,7 +23,9 @@ public:
 	bool purge(const std::string& entity);
 
 private:
-	DiskMultiMap creation, download, contact;
+	DiskMultiMap events;
+	std::string telemetryLogFilename;
+	std::fstream telemetryLog;
 	// Your private member declarations will go here
 };
 
