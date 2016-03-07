@@ -24,9 +24,18 @@
     <ClInclude Include="BinaryFile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="IntelWeb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="InteractionTuple.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DiskMultiMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="IntelWeb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

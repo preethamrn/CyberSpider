@@ -12,9 +12,7 @@ public:
 	class Iterator {
 	public:
 		Iterator();
-		Iterator(const std::string& filename, long offset);
-		Iterator(const Iterator& ob);
-		~Iterator();
+		Iterator(BinaryFile* file, long offset);
 		// You may add additional constructors
 		bool isValid() const;
 		Iterator& operator++();
@@ -22,8 +20,7 @@ public:
 
 	private:
 		long m_offset;
-		std::string m_filename;
-		BinaryFile bf;
+		BinaryFile* bf;
 		MultiMapTuple convert(char key[], char value[], char context[]) {
 			MultiMapTuple m;
 			m.key = std::string(key);

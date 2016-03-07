@@ -121,10 +121,13 @@
   <ItemGroup>
     <ClInclude Include="BinaryFile.h" />
     <ClInclude Include="DiskMultiMap.h" />
+    <ClInclude Include="IntelWeb.h" />
+    <ClInclude Include="InteractionTuple.h" />
     <ClInclude Include="MultiMapTuple.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DiskMultiMap.cpp" />
+    <ClCompile Include="IntelWeb.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

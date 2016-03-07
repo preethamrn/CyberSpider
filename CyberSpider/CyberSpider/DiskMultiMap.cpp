@@ -6,33 +6,26 @@
 DiskMultiMap::Iterator::Iterator() {
 	m_offset = -1;
 }
-DiskMultiMap::Iterator::Iterator(const std::string& filename, long offset) {
+DiskMultiMap::Iterator::Iterator(BinaryFile* file, long offset) {
 	m_offset = offset;
-	m_filename = filename;
-	bf.openExisting(filename);
-}
-DiskMultiMap::Iterator::Iterator(const Iterator& ob) {
-	m_offset = ob.m_offset;
-	m_filename = ob.m_filename;
-	bf.openExisting(ob.m_filename);
-}
-DiskMultiMap::Iterator::~Iterator() {
-	bf.close();
+	bf = file;
 }
 bool DiskMultiMap::Iterator::isValid() const { 
-	return m_offset != -1 && bf.isOpen(); 
+	return m_offset != -1 && bf->isOpen();
 }
 DiskMultiMap::Iterator& DiskMultiMap::Iterator::operator++() {
-	if (!isValid()) return Iterator(); //if iterator isn't valid 
-	KeyValueContextTuple k;
-	bf.read(k, m_offset);
-	m_offset = k.next;
+	if (isValid()) {
+		//if the iterator is valid, go to the next one (otherwise it will just return this iterator without changes which isn't valid)
+		KeyValueContextTuple kvct;
+		bf->read(kvct, m_offset);
+		m_offset = kvct.next;
+	}
 	return *this;
 }
 MultiMapTuple DiskMultiMap::Iterator::operator*() {
-	if (!isValid()) return MultiMapTuple();
+	if (!isValid()) return MultiMapTuple(); //if the iterator isn't valid, return an empty multimap
 	KeyValueContextTuple kvct;
-	bf.read(kvct, m_offset);
+	bf->read(kvct, m_offset);
 	return convert(kvct.key, kvct.value, kvct.context);
 }
 
@@ -142,7 +135,7 @@ DiskMultiMap::Iterator DiskMultiMap::search(const std::string& key) {
 	}
 	if (offset == -1) return Iterator();
 	else {
-		return Iterator(m_filename, kt.kvct_pos);
+		return Iterator(&bf, kt.kvct_pos);
 	}
 }
 
