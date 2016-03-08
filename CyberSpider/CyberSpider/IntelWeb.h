@@ -29,15 +29,6 @@ private:
 	std::string telemetryLogFilename;
 	std::fstream telemetryLog;
 
-};
-
-bool operator<(const InteractionTuple& lhs, const InteractionTuple & rhs) {
-	if (lhs.context < rhs.context) return true;
-	else if (rhs.context < lhs.context) return false;
-	else if (lhs.from < rhs.from) return true;
-	else if (rhs.from < lhs.from) return false;
-	else if (lhs.to < rhs.to) return true;
-	else return false;
-}
+}; 
 
 #endif // INTELWEB_H_

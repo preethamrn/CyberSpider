@@ -1,0 +1,8 @@
+m10672	chrome.exe	videogame.exe
+m10672	chrome.exe	http://www.twitch.com
+m10672	disk-eater.exe	disk-killer.exe
+m22345	firefox.exe	http://www.yahoo.com
+m22345	http://www.yahoo.com	program.exe
+m22345	http://www.disksmasher.com	disk-killer.exe
+m22345	http://www.disksmasher.com	datakill.exe
+m89241	http://www.disksmasher.com	disk-shredder.exe

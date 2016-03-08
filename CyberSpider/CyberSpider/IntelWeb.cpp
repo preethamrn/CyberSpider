@@ -11,6 +11,16 @@
 #include <algorithm>
 #include <unordered_map>
 
+//operator less than overloaded for InteractionTuple so it can be stored in a set
+bool operator<(const InteractionTuple & lhs, const InteractionTuple & rhs) {
+	if (lhs.context < rhs.context) return true;
+	else if (rhs.context < lhs.context) return false;
+	else if (lhs.from < rhs.from) return true;
+	else if (rhs.from < lhs.from) return false;
+	else if (lhs.to < rhs.to) return true;
+	else return false;
+}
+
 IntelWeb::IntelWeb() {}
 IntelWeb::~IntelWeb() {
 	close();
@@ -102,10 +112,14 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 	std::queue<std::string> badEntitiesToBeProcessed; //store bad entities that need to be processed (ie searched for associations)
 	std::set<InteractionTuple> interactionsSet; //set of all bad interactions (for efficient insertion and collision prevention)
 
-	for (std::vector<std::string>::const_iterator it = badEntitiesFound.begin(); it != badEntitiesFound.end(); it++) {
-		state[*it] = 1; //set entities to need to access
-		badEntitiesToBeProcessed.push(*it);
-		numBadEntities++;
+	for (std::vector<std::string>::const_iterator it = indicators.begin(); it != indicators.end(); it++) {
+		if (prevalences[*it] >= 1) {
+			//if the indicator in not present in our logs we don't add it to the search
+			state[*it] = 1; //set state indicating it needs to be processed
+			badEntitiesFound.push_back(*it);
+			badEntitiesToBeProcessed.push(*it);
+			numBadEntities++;
+		}
 	}
 
 	while (!badEntitiesToBeProcessed.empty()) {
@@ -149,9 +163,15 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 		state[key] = 2; //make state[key] = 2 at end of loop
 	}
 
+	std::sort(badEntitiesFound.begin(), badEntitiesFound.end());
 	for (std::set<InteractionTuple>::const_iterator it = interactionsSet.begin(); it != interactionsSet.end(); it++) {
 		interactions.push_back(*it); //in-order traversal through std::set of interactions will result in sorted order
 	}
 
 	return numBadEntities;
+}
+
+bool IntelWeb::purge(const std::string& entity) {
+	///TODO: COMPLETE purge
+	return true;
 }
