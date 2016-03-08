@@ -44,14 +44,14 @@ private:
 		char key[128], value[128], context[128];
 		long next;
 		long m_offset;
-		///remember to initialize offset and key, value, context when inserting
+		///DEBUGGING: remember to initialize offset and key, value, context when inserting
 	};
 	struct KeyTuple {
 		char key[128];
 		long kvct_pos; //KeyValueContextTuple position
 		long next;
 		long m_offset;
-		///remember to initialize offsets key when inserting
+		///DEBUGGING: remember to initialize offsets key when inserting
 	};
 	struct DiskHeader {
 		unsigned int numBuckets;
@@ -61,7 +61,6 @@ private:
 	std::hash<std::string> hash;
 	std::string m_filename;
 	DiskHeader header;
-	// Your private member declarations will go here
 };
 
 #endif // DISKMULTIMAP_H_

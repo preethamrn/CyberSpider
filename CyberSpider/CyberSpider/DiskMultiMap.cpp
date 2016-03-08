@@ -91,14 +91,14 @@ bool DiskMultiMap::insert(const std::string& key, const std::string& value, cons
 			bf.read(kt, kt_offset);
 		} while (strcmp(kt.key, key.c_str()) && (kt_offset = kt.next) != -1);
 		if (kt_offset != -1) {
-			//that key already exists (and kt has the same value)
+			//that key already exists in the KeyTuple kt
 			long kvct_pos = kt.kvct_pos;
 			KeyValueContextTuple prev;
 			do {
 				bf.read(prev, kvct_pos);
 				kvct_pos = prev.next;
 			} while (kvct_pos != -1);
-			prev.next = kvct_offset;
+			prev.next = kvct_offset; //pushing to back of list
 			if (!bf.write(prev, prev.m_offset)) return false;
 		}
 	}
