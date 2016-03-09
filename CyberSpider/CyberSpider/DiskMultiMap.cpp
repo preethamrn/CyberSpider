@@ -4,30 +4,34 @@
 #include <string>
 
 DiskMultiMap::Iterator::Iterator() {
+	cached = false;
 	m_offset = -1;
 }
 DiskMultiMap::Iterator::Iterator(BinaryFile* file, BinaryFile::Offset offset, const std::string& k) {
+	cached = false;
 	m_offset = offset;
 	bf = file;
 	key = k;
 }
-bool DiskMultiMap::Iterator::isValid() const { 
+bool DiskMultiMap::Iterator::isValid() const {
 	return m_offset != -1 && bf->isOpen();
 }
 DiskMultiMap::Iterator& DiskMultiMap::Iterator::operator++() {
 	if (isValid()) {
 		//if the iterator is valid, go to the next one (otherwise it will just return this iterator without changes which isn't valid)
-		ValueContextTuple vct;
-		bf->read(vct, m_offset);
-		m_offset = vct.next;
+		if(!cached) bf->read(m_vct, m_offset);
+		m_offset = m_vct.next;
+		cached = false;
 	}
 	return *this;
 }
 MultiMapTuple DiskMultiMap::Iterator::operator*() {
 	if (!isValid()) return MultiMapTuple(); //if the iterator isn't valid, return an empty multimap
-	ValueContextTuple vct;
-	bf->read(vct, m_offset);
-	return convert(key.c_str(), vct.value, vct.context);
+	if (!cached) {
+		bf->read(m_vct, m_offset);
+		cached = true;
+	}
+	return convert(m_vct);
 }
 
 DiskMultiMap::DiskMultiMap() {
@@ -79,7 +83,7 @@ bool DiskMultiMap::insert(const std::string& key, const std::string& value, cons
 		if(!bf.read(header.vct_last_erased, header.vct_last_erased)) return false; //reads new last_erased position from the last_erased position
 	}
 	ValueContextTuple vct;
-	strcpy_s(vct.value, value.c_str()); strcpy_s(vct.context, context.c_str()); vct.next = -1; vct.m_offset = vct_offset;
+	strcpy(vct.value, value.c_str()); strcpy(vct.context, context.c_str()); vct.next = -1; vct.m_offset = vct_offset;
 	if (!bf.write(vct, vct_offset)) return false;
 
 	unsigned int pos = (hash(key) % header.numBuckets);
@@ -119,7 +123,7 @@ bool DiskMultiMap::insert(const std::string& key, const std::string& value, cons
 			//there are no KeyTuples at that hash
 			if (!bf.write(kt_offset, sizeof(DiskHeader) + pos*sizeof(BinaryFile::Offset))) return false;
 		}
-		strcpy_s(kt.key, key.c_str()); kt.next = -1; kt.vct_pos = vct_offset; kt.m_offset = kt_offset;
+		strcpy(kt.key, key.c_str()); kt.next = -1; kt.vct_pos = vct_offset; kt.m_offset = kt_offset;
 		if(!bf.write(kt, kt_offset)) return false;
 	}
 	if(!bf.write(header, 0)) return false;

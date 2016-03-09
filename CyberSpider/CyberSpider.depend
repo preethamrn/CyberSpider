@@ -1,0 +1,54 @@
+# depslib dependency file v1.0
+1457514479 source:e:\ucla\cs32\project 4\cyberspider\cyberspider\intelweb.cpp
+	"IntelWeb.h"
+	"DiskMultiMap.h"
+	"MultiMapTuple.h"
+	"InteractionTuple.h"
+	<fstream>
+	<sstream>
+	<string>
+	<vector>
+	<queue>
+	<set>
+	<algorithm>
+	<unordered_map>
+
+1457479398 e:\ucla\cs32\project 4\cyberspider\cyberspider\intelweb.h
+	"InteractionTuple.h"
+	"DiskMultiMap.h"
+	<fstream>
+	<string>
+	<vector>
+
+1457303009 e:\ucla\cs32\project 4\cyberspider\cyberspider\interactiontuple.h
+	<string>
+
+1457512229 e:\ucla\cs32\project 4\cyberspider\cyberspider\diskmultimap.h
+	<string>
+	<cstring>
+	<functional>
+	"MultiMapTuple.h"
+	"BinaryFile.h"
+
+1457302923 e:\ucla\cs32\project 4\cyberspider\cyberspider\multimaptuple.h
+	<string>
+
+1457555152 e:\ucla\cs32\project 4\cyberspider\cyberspider\binaryfile.h
+	<iostream>
+	<fstream>
+	<string>
+	<type_traits>
+	<cstdint>
+
+1457495593 source:e:\ucla\cs32\project 4\cyberspider\cyberspider\p4tester.cpp
+	"IntelWeb.h"
+	"InteractionTuple.h"
+	<iostream>
+	<fstream>
+	<sstream>
+	<vector>
+	<map>
+	<set>
+	<string>
+	<cstdlib>
+

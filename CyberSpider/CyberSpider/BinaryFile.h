@@ -51,14 +51,6 @@ public:
 
 	template<typename T>
 	bool write(const T& data, Offset toOffset) {
-		static_assert(!is_pointer<T>::value && !is_member_pointer<T>::value,
-			"BinaryFile::write can not be used to write a pointer");
-		static_assert(!is_string<T>::value,
-			"BinaryFile::write can not be used to write a std::string");
-		static_assert(is_trivially_copyable<T>::value ||
-			is_string<T>::value,  // suppress msg for string
-			"BinaryFile::write can not be used to write a non-trivially copyable class");
-
 		return write(reinterpret_cast<const char*>(&data), sizeof(data), toOffset);
 	}
 
@@ -69,13 +61,6 @@ public:
 
 	template<typename T>
 	bool read(T& data, Offset fromOffset) {
-		static_assert(!is_pointer<T>::value && !is_member_pointer<T>::value,
-			"BinaryFile::read can not be used to read a pointer");
-		static_assert(!is_string<T>::value,
-			"BinaryFile::read can not be used to read a std::string");
-		static_assert(is_trivially_copyable<T>::value ||
-			is_string<T>::value,  // suppress msg for string
-			"BinaryFile::read can not be used to read a non-trivially copyable class");
 
 		return read(reinterpret_cast<char*>(&data), sizeof(data), fromOffset);
 	}

@@ -103,7 +103,7 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 			++it_r;
 		}
 		if (numAssociations >= minPrevalenceToBeGood && !is_initiator) {
-			state[key] == 3; //set state so this key isn't accessed again (and indicates that it's a popular entity)
+			state[key] = 3; //set state so this key isn't accessed again (and indicates that it's a popular entity)
 			continue; //this key has enough prevalence to be skipped or the key doesn't have any associations
 		}
 		if (numAssociations == 0) continue;
