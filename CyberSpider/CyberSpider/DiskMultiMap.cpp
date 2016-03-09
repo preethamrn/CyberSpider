@@ -6,7 +6,7 @@
 DiskMultiMap::Iterator::Iterator() {
 	m_offset = -1;
 }
-DiskMultiMap::Iterator::Iterator(BinaryFile* file, long offset, std::string k) {
+DiskMultiMap::Iterator::Iterator(BinaryFile* file, BinaryFile::Offset offset, const std::string& k) {
 	m_offset = offset;
 	bf = file;
 	key = k;
@@ -40,43 +40,43 @@ DiskMultiMap::~DiskMultiMap() {
 }
 
 bool DiskMultiMap::createNew(const std::string& filename, unsigned int numBuckets) {
-	if (bf.isOpen()) bf.close();
+	close();
 
 	if (bf.createNew(filename)) {
-		m_filename = filename;
-
 		header.numBuckets = numBuckets;
-		bf.write(header, 0);
+		if(!bf.write(header, 0)) return false;
 
 		for (int i = 0; i < numBuckets; i++) {
-			bf.write(long(-1), sizeof(header) + i*sizeof(long));
+			if(!bf.write(BinaryFile::Offset(-1), sizeof(DiskHeader) + i*sizeof(BinaryFile::Offset))) return false;
 		}
 		return true;
 	}
 	else return false;
 }
 bool DiskMultiMap::openExisting(const std::string& filename) {
-	if (bf.isOpen()) bf.close();
+	close();
 
 	if (bf.openExisting(filename)) {
-		m_filename = filename;
-		bf.read(header, 0);
+		if(!bf.read(header, 0)) return false;
 		return true;
 	}
 	else return false;
 }
 void DiskMultiMap::close() {
 	if(bf.isOpen()) bf.close();
+	header.numBuckets = 0;
+	header.vct_last_erased = -1;
+	header.kt_last_erased = -1;
 }
 bool DiskMultiMap::insert(const std::string& key, const std::string& value, const std::string& context) {
 	if (!bf.isOpen()) return false;
 	if (key.length() > 120 || value.length() > 120 || context.length() > 120) return false;
-	long vct_offset = -1;
+	BinaryFile::Offset vct_offset = -1;
 	if (header.vct_last_erased == -1) {
 		vct_offset = bf.fileLength();
 	} else {
 		vct_offset = header.vct_last_erased;
-		bf.read(header.vct_last_erased, header.vct_last_erased); //reads new last_erased position from the last_erased position
+		if(!bf.read(header.vct_last_erased, header.vct_last_erased)) return false; //reads new last_erased position from the last_erased position
 	}
 	ValueContextTuple vct;
 	strcpy_s(vct.value, value.c_str()); strcpy_s(vct.context, context.c_str()); vct.next = -1; vct.m_offset = vct_offset;
@@ -84,19 +84,19 @@ bool DiskMultiMap::insert(const std::string& key, const std::string& value, cons
 
 	unsigned int pos = (hash(key) % header.numBuckets);
 	KeyTuple kt; kt.m_offset = -1;
-	long kt_offset = -1;
-	bf.read(kt_offset, sizeof(DiskHeader) + pos*sizeof(long));
+	BinaryFile::Offset kt_offset = -1;
+	if(!bf.read(kt_offset, sizeof(DiskHeader) + pos*sizeof(BinaryFile::Offset))) return false;
 	if (kt_offset != -1) {
 		//if there is already a KeyTuple at that hash
 		do {
-			bf.read(kt, kt_offset);
+			if(!bf.read(kt, kt_offset)) return false;
 		} while (strcmp(kt.key, key.c_str()) && (kt_offset = kt.next) != -1);
 		if (kt_offset != -1) {
 			//that key already exists in the KeyTuple kt
-			long vct_pos = kt.vct_pos;
+			BinaryFile::Offset vct_pos = kt.vct_pos;
 			ValueContextTuple prev;
 			do {
-				bf.read(prev, vct_pos);
+				if(!bf.read(prev, vct_pos)) return false;
 				vct_pos = prev.next;
 			} while (vct_pos != -1);
 			prev.next = vct_offset; //pushing to back of list
@@ -109,7 +109,7 @@ bool DiskMultiMap::insert(const std::string& key, const std::string& value, cons
 			kt_offset = bf.fileLength();
 		} else {
 			kt_offset = header.kt_last_erased;
-			bf.read(header.kt_last_erased, header.kt_last_erased); //reads new last_erased position from the last_erased position
+			if(!bf.read(header.kt_last_erased, header.kt_last_erased)) return false; //reads new last_erased position from the last_erased position
 		}
 		if (kt.m_offset != -1) {
 			//there is already a KeyTuple at that hash
@@ -117,19 +117,19 @@ bool DiskMultiMap::insert(const std::string& key, const std::string& value, cons
 			if(!bf.write(kt, kt.m_offset)) return false;
 		} else {
 			//there are no KeyTuples at that hash
-			if (!bf.write(kt_offset, sizeof(DiskHeader) + pos*sizeof(long))) return false;
+			if (!bf.write(kt_offset, sizeof(DiskHeader) + pos*sizeof(BinaryFile::Offset))) return false;
 		}
 		strcpy_s(kt.key, key.c_str()); kt.next = -1; kt.vct_pos = vct_offset; kt.m_offset = kt_offset;
 		if(!bf.write(kt, kt_offset)) return false;
 	}
-	
+	if(!bf.write(header, 0)) return false;
 	return true;
 }
 
 DiskMultiMap::Iterator DiskMultiMap::search(const std::string& key) {
-	long offset = -1;
+	BinaryFile::Offset offset = -1;
 	unsigned int pos = hash(key) % header.numBuckets;
-	bf.read(offset, sizeof(DiskHeader) + pos*sizeof(long));
+	bf.read(offset, sizeof(DiskHeader) + pos*sizeof(BinaryFile::Offset));
 	KeyTuple kt;
 	while(offset != -1 && bf.read(kt, offset) && strcmp(kt.key, key.c_str())) {
 		offset = kt.next;
@@ -141,9 +141,9 @@ DiskMultiMap::Iterator DiskMultiMap::search(const std::string& key) {
 }
 
 int DiskMultiMap::erase(const std::string& key, const std::string& value, const std::string& context) {
-	long offset = -1;
+	BinaryFile::Offset offset = -1;
 	unsigned int pos = hash(key) % header.numBuckets;
-	bf.read(offset, sizeof(DiskHeader) + pos*sizeof(long));
+	bf.read(offset, sizeof(DiskHeader) + pos*sizeof(BinaryFile::Offset));
 	KeyTuple kt, prev_kt; prev_kt.m_offset = -1;
 	while (offset != -1) {
 		bf.read(kt, offset);
@@ -153,7 +153,7 @@ int DiskMultiMap::erase(const std::string& key, const std::string& value, const 
 	}
 	if (offset == -1) return 0;
 	ValueContextTuple prev, curr;
-	long vct_offset = kt.vct_pos;
+	BinaryFile::Offset vct_offset = kt.vct_pos;
 	int num_deleted = 0; //number of deleted items to be returned
 	//update kt associated with vct so it keeps pointing to correct head of linked list
 	//this only checks for the nodes that need to be erased from the start of the linked list
@@ -171,7 +171,7 @@ int DiskMultiMap::erase(const std::string& key, const std::string& value, const 
 			bf.write(prev_kt, prev_kt.m_offset);
 		} else {
 			//since prev_kt hasn't been updated, we know kt is at the head of the bucket
-			bf.write(kt.next, sizeof(DiskHeader) + pos*sizeof(long)); //update the bucket pointer
+			bf.write(kt.next, sizeof(DiskHeader) + pos*sizeof(BinaryFile::Offset)); //update the bucket pointer
 		}
 		bf.write(header.kt_last_erased, kt.m_offset);
 		header.kt_last_erased = kt.m_offset;

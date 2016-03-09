@@ -1,1 +1,85 @@
-Testing the 
+DiskMultiMap:
+DiskMultiMap is a hash table where each key points to multiple <value,context> pairs
+The DiskMultiMap is stored on a disk file that is structured as described below:
+-The file starts with a header that stores the number of buckets in the hash table, and positions to the last erased items from the file (to conserve space)
+-Following that there are a number of offsets, pointing to the head KeyTuple (described below) in the list of keys
+-The rest of the file contains KeyTuples and ValueContextTuples (described below) with data as well as pointers to the next data structure in their respective list
+-Some KeyTuples and ValueContextTuples that have been erased contain the offset pointing to the next free position for storing data in place of their usual data
+
+	KeyTuple (KT): Contains a constant size character array containing the key, offset pointing to the next KeyTuple with the same hash if one exists, offset pointing to the head ValueContextTuple
+	ValueContextTuple (VCT): Contains constant size character arrays containing the value and context, and offset pointing to the next ValueContextTuple with the same key if one exists
+
+	insert(const std::string& key, const std::string& value, const std::string& context):
+		If the binary file isn't open or the input strings are too long, return false - O(1)
+		Find a suitable offset for the new VCT in the file (reuse disk space if possible and update the header value for the last erased VCT position) - O(1)
+		Create a new VCT with appropriate values and write it to the file at the offset found - O(1)
+		Hash the key and search for it in all the keys with the same hash - O(N/B)
+		If the key is found, add the new VCT to the end of the list of VCTs associated with that key - O(K)
+		If the key isn't found:
+			Find a suitable offset for the new KT in the file (reuse disk space if possible and update the header value for the last erased KT position) - O(1)
+			If there is already a key with the same hash, link that KT to the new KT and write it to the file - O(1)
+			Otherwise write the offset of the new KT to the position of the bucket containing it - O(1)
+			Create a new KT with appropriate values and write it to the file at the offset found - O(1)
+		Write any updates to the header
+TIME COMPLEXITY: O(N/B + K)
+
+	search(const std::string& key):
+		Hash the key and search for that key in the list of keys with that hash - O(N/B)
+		If the key isn't found, return the default (invalid) iterator
+		Otherwise return an Iterator pointing to the first VCT containing a pointer to the binary file, and the key
+TIME COMPLEXITY: O(N/B)
+
+	erase(const std::string& key, const std::string& value, const std::string& context):
+		[note: whenever a VCT or KT is deleted we update the list of open positions by adding another node to the list of removed VCTs or KTs]
+		First find the position of the key by hashing the key and looking through the list of KTs in the appropriate bucket - O(N/B)
+		If the key couldn't be found, return 0
+		Otherwise, delete elements from the start of the list of VCTs and erase and link the KT to the next VCT until we find a VCT that doesn't match - O(K)
+		If the entire list has been erased, update the previous KT or the bucket to point the the KT after this KT - O(1)
+		If there are still nodes remaining in the VCT list, we go through them, erase matches and link the previous node to the next if a match is found - O(K)
+TIME COMPLEXITY: O(N/B) + O(K)
+
+---------------------------------------------
+
+DiskMultiMap::Iterator:
+
+
+
+
+---------------------------------------------
+
+IntelWeb:
+
+
+
+
+
+
+---------------------------------------------
+
+///DEBUGGING
+DiskMultiMap(): initializes the binary file header
+	~DiskMultiMap(): closes the binary file in case the user doesn't explicitly close it
+
+	createNew(const std::string& filename, unsigned int numBuckets):
+		close the binary file
+		try creating a new binary file with the given filename
+		if the creation passed:
+			write the disk header to the file after storing the number of buckets
+			for each bucket, write the null offset (-1) to the file at the bucket position in the file
+			return true
+		otherwise: return false
+	TIME COMPLEXITY: O(numBuckets) because the longest operation is storing the null offset in each bucket
+
+	openExisting():
+		close the binary file
+		try opening an existing binary file with the given filename
+		if the opening passed:
+			read the header to RAM
+			return true
+		otherwise: return false
+	TIME COMPLEXITY: O(1) since all operations take constant time
+
+	close():
+		if the binary file is open, close it
+		reset the header values to their initial values
+	TIME COMPLEXITY: O(1) since all operations take constant time

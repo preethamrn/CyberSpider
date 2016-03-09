@@ -27,12 +27,16 @@ IntelWeb::~IntelWeb() {
 }
 bool IntelWeb::createNew(const std::string& filePrefix, unsigned int maxDataItems) {
 	close();
-	return initiator_events.createNew(filePrefix + "-initiator.dmm", (unsigned int) maxDataItems*(4.0 / 3.0)) && 
+	bool success = initiator_events.createNew(filePrefix + "-initiator.dmm", (unsigned int) maxDataItems*(4.0 / 3.0)) && 
 		target_events.createNew(filePrefix + "-target.dmm", (unsigned int)maxDataItems*(4.0 / 3.0));
+	if (!success) close();
+	return success;
 }
 bool IntelWeb::openExisting(const std::string& filePrefix) {
 	close();
-	return initiator_events.openExisting(filePrefix + "-initiator.dmm") && target_events.openExisting(filePrefix + "-target.dmm");
+	bool success = initiator_events.openExisting(filePrefix + "-initiator.dmm") && target_events.openExisting(filePrefix + "-target.dmm");
+	if (!success) close();
+	return success;
 }
 void IntelWeb::close() {
 	initiator_events.close();
@@ -62,44 +66,49 @@ bool IntelWeb::ingest(const std::string& telemetryFile) {
 		if (iss >> dummy) // succeeds if there a non-whitespace char
 			std::cerr << "Ignoring extra data in line: " << line << std::endl;
 
-		initiator_events.insert(initiator, target, context);
-		target_events.insert(target, initiator, context);
+		if(!initiator_events.insert(initiator, target, context)) return false;
+		if(!target_events.insert(target, initiator, context)) return false;
 	}
 	return true;
 }
 
 unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigned int minPrevalenceToBeGood, std::vector<std::string>& badEntitiesFound, std::vector<InteractionTuple>& interactions) {
 	unsigned int numBadEntities = 0;
-	std::unordered_map<std::string, int> state; //stores whether entity shouldn't be processed (0), needs to be processed (1), or has already been processed [and isn't popular (2)] or [and is popular (3)] 
+	std::unordered_map<std::string, int> state; //stores whether entity shouldn't be processed (0), needs to be processed [and is an initiator (4)] or [and isn't initiator (1)], or has already been processed [and isn't popular (2)] or [and is popular (3)] 
 
 	std::queue<std::string> badEntitiesToBeProcessed; //store bad entities that need to be processed (ie searched for associations)
 	std::set<InteractionTuple> interactionsSet; //set of all bad interactions (for efficient insertion and collision prevention)
 
 	for (std::vector<std::string>::const_iterator it = indicators.begin(); it != indicators.end(); it++) {
-		state[*it] = 1; //set state indicating it needs to be processed
+		state[*it] = 4; //set state indicating it needs to be processed (and was an initiator)
 		badEntitiesToBeProcessed.push(*it);
 	}
 
 	while (!badEntitiesToBeProcessed.empty()) {
 		std::string key = badEntitiesToBeProcessed.front(); badEntitiesToBeProcessed.pop(); 
-		state[key] = 3; //set state so this key isn't accessed again (and indicates that it's a popular entity)
 		vector<MultiMapTuple> associations_i, associations_r; //initiator and receiver associations
 		
 		//go through all of this key's associations and add potential bad entities (ie. entities that haven't been processed yet or have too low prevalence)
 		DiskMultiMap::Iterator it_i = initiator_events.search(key), it_r = target_events.search(key);
 		unsigned int numAssociations = 0;
-		while (it_i.isValid()) { //associations where key is initiator
+		bool is_initiator = (state[key] == 4);
+		while (it_i.isValid() && (is_initiator || numAssociations < minPrevalenceToBeGood)) { //associations where key is initiator
 			numAssociations++;
 			associations_i.push_back(*it_i);
 			++it_i;
 		}
-		while (it_r.isValid()) { //associations where key is receiver
+		while (it_r.isValid() && (is_initiator || numAssociations < minPrevalenceToBeGood)) { //associations where key is receiver
 			numAssociations++;
 			associations_r.push_back(*it_r);
 			++it_r;
 		}
-		if (numAssociations >= minPrevalenceToBeGood || numAssociations == 0) continue; //this key has enough prevalence to be skipped or the key doesn't have any associations
-		
+		if (numAssociations >= minPrevalenceToBeGood && !is_initiator) {
+			state[key] == 3; //set state so this key isn't accessed again (and indicates that it's a popular entity)
+			continue; //this key has enough prevalence to be skipped or the key doesn't have any associations
+		}
+		if (numAssociations == 0) continue;
+
+		state[key] = 2; //set state indicating this was a badEntity
 		badEntitiesFound.push_back(key);
 		numBadEntities++;
 		
@@ -121,8 +130,6 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 			InteractionTuple bad_interaction(mmt.value, key, mmt.context);
 			interactionsSet.insert(bad_interaction); //inserting to set will prevent duplicates
 		}
-
-		state[key] = 2; //set prevalence indicating this was a badEntity
 	}
 
 	std::sort(badEntitiesFound.begin(), badEntitiesFound.end());

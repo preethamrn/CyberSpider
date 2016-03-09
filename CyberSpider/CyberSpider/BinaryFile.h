@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <type_traits>
+#include <cstdint> // if Offset is int32_t instead of ios::streamoff
 using namespace std;
 
 template<typename T> struct False : false_type {};
@@ -19,11 +20,11 @@ public:
 	// We ought to say
 	//   typedef ios::streamoff Offset;
 	// but this would make Offset 8 bytes on most machines.  For the
-	// purposes of Project 4, a 4-byte type (like long on most machines)
-	// reduces the disk space needed to store offsets, yet still allow
-	// file sizes of about 2GB (not 4GB; this type should be signed).
+	// purposes of Project 4, a 4-byte type reduces the disk space
+	// needed to store offsets, yet still allow file sizes of about
+	// 2GB (not 4GB, because this type should be signed).
 
-	typedef long Offset;
+	typedef int32_t Offset;
 
 	~BinaryFile() {
 		m_stream.close();
@@ -32,14 +33,14 @@ public:
 	bool openExisting(const std::string& filename) {
 		if (m_stream.is_open())
 			return false;
-		m_stream.open(filename, std::ios::in | std::ios::out | std::ios::binary);
+		m_stream.open(filename, ios::in | ios::out | ios::binary);
 		return m_stream.good();
 	}
 
 	bool createNew(const std::string& filename) {
 		if (m_stream.is_open())
 			return false;
-		m_stream.open(filename, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+		m_stream.open(filename, ios::in | ios::out | ios::binary | ios::trunc);
 		return m_stream.good();
 	}
 
@@ -54,15 +55,15 @@ public:
 			"BinaryFile::write can not be used to write a pointer");
 		static_assert(!is_string<T>::value,
 			"BinaryFile::write can not be used to write a std::string");
-		static_assert(is_fundamental<T>::value || is_pod<T>::value ||
+		static_assert(is_trivially_copyable<T>::value ||
 			is_string<T>::value,  // suppress msg for string
-			"BinaryFile::write can not be used to write a non-trivial class");
+			"BinaryFile::write can not be used to write a non-trivially copyable class");
 
 		return write(reinterpret_cast<const char*>(&data), sizeof(data), toOffset);
 	}
 
 	bool write(const char* data, size_t length, Offset toOffset) {
-		return m_stream.seekp(toOffset, std::ios::beg) &&
+		return m_stream.seekp(toOffset, ios::beg) &&
 			m_stream.write(data, length);
 	}
 
@@ -72,16 +73,19 @@ public:
 			"BinaryFile::read can not be used to read a pointer");
 		static_assert(!is_string<T>::value,
 			"BinaryFile::read can not be used to read a std::string");
-		static_assert(is_fundamental<T>::value || is_pod<T>::value ||
+		static_assert(is_trivially_copyable<T>::value ||
 			is_string<T>::value,  // suppress msg for string
-			"BinaryFile::read can not be used to read a non-trivial class");
+			"BinaryFile::read can not be used to read a non-trivially copyable class");
 
 		return read(reinterpret_cast<char*>(&data), sizeof(data), fromOffset);
 	}
 
-	bool read(char* data, size_t length, Offset fromOffset) {
-		return m_stream.seekg(fromOffset, std::ios::beg) &&
+	bool read(char* data, size_t length, Offset fromOffset)	{
+		bool result = m_stream.seekg(fromOffset, ios::beg) &&
 			m_stream.read(data, length);
+		if (!result)
+			m_stream.clear();
+		return result;
 	}
 
 	template<typename T>
@@ -101,11 +105,11 @@ public:
 	Offset fileLength() {
 		if (!m_stream.is_open())
 			return -1;
-		Offset currPos = m_stream.tellg();
-		m_stream.seekg(0, std::ios::end);
-		Offset length = m_stream.tellg();
-		m_stream.seekg(currPos, std::ios::beg);
-		return length;
+		ios::streamoff currPos = m_stream.tellg();
+		m_stream.seekg(0, ios::end);
+		ios::streamoff length = m_stream.tellg();
+		m_stream.seekg(currPos, ios::beg);
+		return static_cast<Offset>(length);
 	}
 
 	bool isOpen() const {
@@ -113,7 +117,7 @@ public:
 	}
 
 private:
-	std::fstream m_stream;
+	fstream m_stream;
 
 	// fstreams are not copyable, so BinaryFiles won't be copyable.
 };
