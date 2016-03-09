@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{95288F92-C2EC-48EC-8370-161124023BBF}</ProjectGuid>
-    <RootNamespace>CyberSpider</RootNamespace>
+    <ProjectGuid>{DF2C92AE-607F-4A3B-878A-4E0A6EFE4E69}</ProjectGuid>
+    <RootNamespace>p4gen</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -77,7 +77,6 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -119,19 +118,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="BinaryFile.h" />
-    <ClInclude Include="DiskMultiMap.h" />
-    <ClInclude Include="IntelWeb.h" />
-    <ClInclude Include="InteractionTuple.h" />
-    <ClInclude Include="MultiMapTuple.h" />
+    <ClCompile Include="p4gen.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="DiskMultiMap.cpp" />
-    <ClCompile Include="IntelWeb.cpp" />
-    <ClCompile Include="p4tester.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="report.txt" />
+    <Text Include="malicious.txt" />
+    <Text Include="sources.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

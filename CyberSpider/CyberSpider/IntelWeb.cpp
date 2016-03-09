@@ -28,15 +28,15 @@ IntelWeb::~IntelWeb() {
 bool IntelWeb::createNew(const std::string& filePrefix, unsigned int maxDataItems) {
 	close();
 	return initiator_events.createNew(filePrefix + "-initiator.dmm", (unsigned int) maxDataItems*(4.0 / 3.0)) && 
-		receiver_events.createNew(filePrefix + "-receiver.dmm", (unsigned int)maxDataItems*(4.0 / 3.0));
+		target_events.createNew(filePrefix + "-target.dmm", (unsigned int)maxDataItems*(4.0 / 3.0));
 }
 bool IntelWeb::openExisting(const std::string& filePrefix) {
 	close();
-	return initiator_events.openExisting(filePrefix + "-initiator.dmm") && receiver_events.openExisting(filePrefix + "-receiver.dmm");
+	return initiator_events.openExisting(filePrefix + "-initiator.dmm") && target_events.openExisting(filePrefix + "-target.dmm");
 }
 void IntelWeb::close() {
 	initiator_events.close();
-	receiver_events.close();
+	target_events.close();
 }
 
 bool IntelWeb::ingest(const std::string& telemetryFile) {
@@ -51,9 +51,9 @@ bool IntelWeb::ingest(const std::string& telemetryFile) {
 	std::string line;
 	while (getline(inf, line)) {
 		std::istringstream iss(line);
-		std::string context, initiator, receiver;
+		std::string context, initiator, target;
 
-		if (!(iss >> context >> initiator >> receiver)) {
+		if (!(iss >> context >> initiator >> target)) {
 			std::cerr << "Ignoring badly-formatted input line: " << line << std::endl;
 			continue;
 		}
@@ -62,16 +62,15 @@ bool IntelWeb::ingest(const std::string& telemetryFile) {
 		if (iss >> dummy) // succeeds if there a non-whitespace char
 			std::cerr << "Ignoring extra data in line: " << line << std::endl;
 
-		initiator_events.insert(initiator, receiver, context);
-		receiver_events.insert(receiver, initiator, context);
+		initiator_events.insert(initiator, target, context);
+		target_events.insert(target, initiator, context);
 	}
 	return true;
 }
 
 unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigned int minPrevalenceToBeGood, std::vector<std::string>& badEntitiesFound, std::vector<InteractionTuple>& interactions) {
 	unsigned int numBadEntities = 0;
-	std::unordered_map<std::string, unsigned int> prevalences; //stores prevalences of each entity
-	std::unordered_map<std::string, int> state; //stores whether entity shouldn't be processed (0), needs to be processed (1), or has already been processed (2)
+	std::unordered_map<std::string, int> state; //stores whether entity shouldn't be processed (0), needs to be processed (1), or has already been processed [and isn't popular (2)] or [and is popular (3)] 
 
 	std::queue<std::string> badEntitiesToBeProcessed; //store bad entities that need to be processed (ie searched for associations)
 	std::set<InteractionTuple> interactionsSet; //set of all bad interactions (for efficient insertion and collision prevention)
@@ -83,11 +82,11 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 
 	while (!badEntitiesToBeProcessed.empty()) {
 		std::string key = badEntitiesToBeProcessed.front(); badEntitiesToBeProcessed.pop(); 
-		state[key] = 2; //set state so this key isn't accessed again
+		state[key] = 3; //set state so this key isn't accessed again (and indicates that it's a popular entity)
 		vector<MultiMapTuple> associations_i, associations_r; //initiator and receiver associations
 		
 		//go through all of this key's associations and add potential bad entities (ie. entities that haven't been processed yet or have too low prevalence)
-		DiskMultiMap::Iterator it_i = initiator_events.search(key), it_r = receiver_events.search(key);
+		DiskMultiMap::Iterator it_i = initiator_events.search(key), it_r = target_events.search(key);
 		unsigned int numAssociations = 0;
 		while (it_i.isValid()) { //associations where key is initiator
 			numAssociations++;
@@ -99,7 +98,6 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 			associations_r.push_back(*it_r);
 			++it_r;
 		}
-		prevalences[key] = numAssociations;
 		if (numAssociations >= minPrevalenceToBeGood || numAssociations == 0) continue; //this key has enough prevalence to be skipped or the key doesn't have any associations
 		
 		badEntitiesFound.push_back(key);
@@ -107,7 +105,7 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 		
 		for (int i = 0; i < associations_i.size(); i++) {
 			MultiMapTuple &mmt = associations_i[i];
-			if (state[mmt.value] == 0 && prevalences[mmt.value] < minPrevalenceToBeGood) {
+			if (state[mmt.value] == 0) {
 				badEntitiesToBeProcessed.push(mmt.value); //add it to the process queue
 				state[mmt.value] = 1; //set state indicating this value needs to be processed
 			}
@@ -116,13 +114,15 @@ unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigne
 		}
 		for (int i = 0; i < associations_r.size(); i++) {
 			MultiMapTuple &mmt = associations_r[i];
-			if (state[mmt.value] == 0 && prevalences[mmt.value] < minPrevalenceToBeGood) {
+			if (state[mmt.value] == 0) {
 				badEntitiesToBeProcessed.push(mmt.value); //add it to the process queue
 				state[mmt.value] = 1; //set state indicating this value needs to be processed
 			}
 			InteractionTuple bad_interaction(mmt.value, key, mmt.context);
 			interactionsSet.insert(bad_interaction); //inserting to set will prevent duplicates
 		}
+
+		state[key] = 2; //set prevalence indicating this was a badEntity
 	}
 
 	std::sort(badEntitiesFound.begin(), badEntitiesFound.end());
@@ -140,14 +140,14 @@ bool IntelWeb::purge(const std::string& entity) {
 		it_i = initiator_events.search(entity);
 		MultiMapTuple mmt = *it_i;
 		initiator_events.erase(mmt.key, mmt.value, mmt.context);
-		receiver_events.erase(mmt.value, mmt.key, mmt.context); //receiver events have key and value swapped
+		target_events.erase(mmt.value, mmt.key, mmt.context); //target events have key and value swapped
 		purged = true;
 	} while (it_i.isValid());
 
 	do {
-		it_i = receiver_events.search(entity);
+		it_i = target_events.search(entity);
 		MultiMapTuple mmt = *it_i;
-		receiver_events.erase(mmt.key, mmt.value, mmt.context);
+		target_events.erase(mmt.key, mmt.value, mmt.context);
 		initiator_events.erase(mmt.value, mmt.key, mmt.context); //initiator events have key and value swapped
 		purged = true;
 	} while (it_i.isValid());

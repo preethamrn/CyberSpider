@@ -23,7 +23,7 @@ public:
 	bool purge(const std::string& entity);
 
 private:
-	DiskMultiMap initiator_events, receiver_events;
+	DiskMultiMap initiator_events, target_events;
 	//initiator_events: stores mapping from initiator to all the receivers
 	//receiver_events: stores mapping from receivers to all its initiators
 
