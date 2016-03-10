@@ -74,6 +74,8 @@ bool IntelWeb::ingest(const std::string& telemetryFile) {
 
 unsigned int IntelWeb::crawl(const std::vector<std::string>& indicators, unsigned int minPrevalenceToBeGood, std::vector<std::string>& badEntitiesFound, std::vector<InteractionTuple>& interactions) {
 	unsigned int numBadEntities = 0;
+	interactions.clear();
+	badEntitiesFound.clear();
 	std::unordered_map<std::string, int> state; //stores whether entity shouldn't be processed (0), needs to be processed [and is an initiator (4)] or [and isn't initiator (1)], or has already been processed [and isn't popular (2)] or [and is popular (3)] 
 
 	std::queue<std::string> badEntitiesToBeProcessed; //store bad entities that need to be processed (ie searched for associations)
@@ -161,22 +163,3 @@ bool IntelWeb::purge(const std::string& entity) {
 
 	return purged;
 }
-/*
-int main() {
-	IntelWeb a;
-	a.createNew("a", 100);
-	a.ingest("jan-telemetry.txt");
-	a.ingest("feb-telemetry.txt");
-	
-	vector<string> ind;
-	ind.push_back("http://www.virus.com");
-	ind.push_back("disk-eater.exe");
-	ind.push_back("datakill.exe");
-	ind.push_back("http://www.stealthyattack.com");
-	vector<string> be;
-	vector<InteractionTuple> bi;
-
-	a.crawl(ind, 12, be, bi);
-	cout << be.size();
-	cout << bi.size();
-}*/

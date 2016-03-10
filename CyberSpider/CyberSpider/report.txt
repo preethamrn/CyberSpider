@@ -36,50 +36,49 @@ TIME COMPLEXITY: O(N/B)
 		Otherwise, delete elements from the start of the list of VCTs and erase and link the KT to the next VCT until we find a VCT that doesn't match - O(K)
 		If the entire list has been erased, update the previous KT or the bucket to point the the KT after this KT - O(1)
 		If there are still nodes remaining in the VCT list, we go through them, erase matches and link the previous node to the next if a match is found - O(K)
-TIME COMPLEXITY: O(N/B) + O(K)
+TIME COMPLEXITY: O(N/B + K)
 
 ---------------------------------------------
 
 DiskMultiMap::Iterator:
-
-
-
+Each iterator does caching so that unless the iterator is updated, it doesn't read the binary file more than once. It accomplishes this using a boolean that is false when the iterator is first created and whenever it is updated (whenever operator++() is called for example).
+Iterators also store the offset of the value it's looking at in the binary file, the key that the value is associated with, as well as a pointer to the binary file.
+	operator++():
+		Read the value at the offset and set the offset to the next offset in the list
+TIME COMPLEXITY: O(1)
+	operator*():
+		Read the value at the offset and convert it to a MultiMapTuple that can is returned
+TIME COMPLEXITY: O(1)
 
 ---------------------------------------------
 
 IntelWeb:
+Contains DiskMultiMaps (hash multi-maps stored on disk) initiator and target events that store mapping from initiator to all its targets and vice versa respectively.
+	ingest(const std::string& telemetryFile):
+		[note: If any operation in this function fails (eg. reading/writing/opening file), return false without proceeding further]
+		Open the telemetry file
+		While there are still lines in the file, get the line: - O(T)
+			Get the context, initiator, and target from the file and insert the mappings the the initiator and target events DiskMultiMaps - O(1)
+TIME COMPLEXITY: O(T) - T = number of lines of telemetry data
 
+	crawl(const std::vector<std::string>& indicators, unsigned int minPrevalenceToBeGood, std::vector<std::string>& badEntitiesFound, std::vector<InteractionTuple>& interactions):
+	DATA STRUCTURES:
+		-hash map: stores state = whether entity shouldn't be processed (0), needs to be processed [and is an initiator (4)] or [and isn't initiator (1)], or has already been processed [and isn't popular (2)] or [and is popular (3)] 
+		-queue: stores bad entities that need to be processed (ie. searched for associations)
+		-set: stores all the bad interactions which can be easily retrieved in sorted order from a set.
+	ALGORITHM:
+		Add each indicator of the queue of badEntitiesToBeProcessed and set their state to 4
+		While there are still entities that need to be processed:
+			Get and pop the key from the front of the queue
+			Check the number of initiator and target associations that the key has
+			If the number of associations is >= the minimum prevalence to be good, and the entity isn't an initiator, then set its state to 3 to go to the next entity in the queue
+			Add the entity to the badEntitiesFound, set its state to 2, and increment the number of bad entities
+			For all associations, if the value hasn't been process yet, set its state to 1 and add it to the queue. Also, add that interation to the set
+		Sort all the badEntitiesFound, push the interactions from the set to the vector, and return the number of bad entities
+TIME COMPLEXITY: O(TlogT) - T = number of bad interactions
 
-
-
-
-
----------------------------------------------
-
-///DEBUGGING
-DiskMultiMap(): initializes the binary file header
-	~DiskMultiMap(): closes the binary file in case the user doesn't explicitly close it
-
-	createNew(const std::string& filename, unsigned int numBuckets):
-		close the binary file
-		try creating a new binary file with the given filename
-		if the creation passed:
-			write the disk header to the file after storing the number of buckets
-			for each bucket, write the null offset (-1) to the file at the bucket position in the file
-			return true
-		otherwise: return false
-	TIME COMPLEXITY: O(numBuckets) because the longest operation is storing the null offset in each bucket
-
-	openExisting():
-		close the binary file
-		try opening an existing binary file with the given filename
-		if the opening passed:
-			read the header to RAM
-			return true
-		otherwise: return false
-	TIME COMPLEXITY: O(1) since all operations take constant time
-
-	close():
-		if the binary file is open, close it
-		reset the header values to their initial values
-	TIME COMPLEXITY: O(1) since all operations take constant time
+	purge(const std::string& entity):
+		For all initiator associations of the entity, erase it from the initiator events DiskMultiMap and the reverse from the target events DiskMultiMap
+		For all target associations of the entity, erase it from the target events DiskMultiMap and the reverse from the initiator events DiskMultiMap
+		Return whether at least one association was deleted (ie, if it went through at least one loop)
+TIME COMPLEXITY: O(M) - M = number of associations deleted
